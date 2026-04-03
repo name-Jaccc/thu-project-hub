@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { format, isAfter, isBefore, addDays, parseISO } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import type {
-  AppState, Lane, Institution, Project, Task, Tag,
+  AppState, Lane, Project, Task, Tag,
   Priority, Status, ViewMode,
 } from './types';
 import {
@@ -63,7 +63,6 @@ export default function App() {
   const [taskFilterMode, setTaskFilterMode] = useState<'all' | 'this_week' | 'high_priority' | 'urgent'>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeLane, setActiveLane] = useState<string | null>(null); // null = all
-  const [activeInstitution, setActiveInstitution] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<Status | ''>('');
   const [filterPriority, setFilterPriority] = useState<Priority | ''>('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -71,7 +70,6 @@ export default function App() {
   const [editingItem, setEditingItem] = useState<{ type: 'project' | 'task'; id: string } | null>(null);
   const [showNewModal, setShowNewModal] = useState<'project' | 'task' | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [expandedInstitutions, setExpandedInstitutions] = useState<Record<string, boolean>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [filterTag, setFilterTag] = useState('');
 
@@ -168,7 +166,6 @@ export default function App() {
   const filteredProjects = useMemo(() => {
     return state.projects.filter(p => {
       if (activeLane && p.laneId !== activeLane) return false;
-      if (activeInstitution && p.institutionId !== activeInstitution) return false;
       if (filterStatus && p.status !== filterStatus) return false;
       if (filterPriority && p.priority !== filterPriority) return false;
       if (filterTag && !p.tags.includes(filterTag)) return false;
@@ -178,12 +175,11 @@ export default function App() {
       }
       return true;
     });
-  }, [state.projects, activeLane, activeInstitution, filterStatus, filterPriority, filterTag, searchQuery]);
+  }, [state.projects, activeLane, filterStatus, filterPriority, filterTag, searchQuery]);
 
   const filteredTasks = useMemo(() => {
     return state.tasks.filter(t => {
       if (activeLane && t.laneId !== activeLane) return false;
-      if (activeInstitution && t.institutionId !== activeInstitution) return false;
       if (filterStatus && t.status !== filterStatus) return false;
       if (filterPriority && t.priority !== filterPriority) return false;
       if (filterTag && !t.tags.includes(filterTag)) return false;
@@ -193,7 +189,7 @@ export default function App() {
       }
       return true;
     });
-  }, [state.tasks, activeLane, activeInstitution, filterStatus, filterPriority, filterTag, searchQuery]);
+  }, [state.tasks, activeLane, filterStatus, filterPriority, filterTag, searchQuery]);
 
   const kanbanGroups = useMemo(() => {
     const groups: Record<Status, Task[]> = {
@@ -205,7 +201,6 @@ export default function App() {
 
   // ── Helpers ──
   const getLane = (id: string) => state.lanes.find(l => l.id === id);
-  const getInstitution = (id?: string) => state.institutions.find(i => i.id === id);
   const getTag = (id: string) => state.tags.find(t => t.id === id);
   const getProject = (id: string) => state.projects.find(p => p.id === id);
 
@@ -274,7 +269,6 @@ export default function App() {
     setActiveView('overview');
     setSelectedProjectId(null);
     setActiveLane(null);
-    setActiveInstitution(null);
     setSearchQuery('');
     setFilterStatus('');
     setFilterPriority('');
@@ -285,7 +279,6 @@ export default function App() {
     setShowNewModal(null);
     setViewMode('list');
     setShowFilters(false);
-    setExpandedInstitutions({});
     if (syncMode === 'cloud') {
       saveToSupabase(freshData);
     }
@@ -296,7 +289,6 @@ export default function App() {
     if (!confirmed) return;
     const emptyData: AppState = {
       lanes: JSON.parse(JSON.stringify(initialData.lanes)),
-      institutions: JSON.parse(JSON.stringify(initialData.institutions)),
       tags: JSON.parse(JSON.stringify(initialData.tags)),
       projects: [],
       tasks: [],
@@ -307,7 +299,6 @@ export default function App() {
     setActiveView('overview');
     setSelectedProjectId(null);
     setActiveLane(null);
-    setActiveInstitution(null);
     setSearchQuery('');
     setFilterStatus('');
     setFilterPriority('');
@@ -318,21 +309,14 @@ export default function App() {
     setShowNewModal(null);
     setViewMode('list');
     setShowFilters(false);
-    setExpandedInstitutions({});
     if (syncMode === 'cloud') {
       saveToSupabase(emptyData);
     }
   }, [syncMode]);
 
-  // ── Toggle institution expansion ──
-  const toggleInstitution = (instId: string) => {
-    setExpandedInstitutions(prev => ({ ...prev, [instId]: !prev[instId] }));
-  };
-
   // ── Clear filters ──
   const clearFilters = () => {
     setActiveLane(null);
-    setActiveInstitution(null);
     setFilterStatus('');
     setFilterPriority('');
     setFilterTag('');
@@ -340,7 +324,7 @@ export default function App() {
     setSearchQuery('');
   };
 
-  const hasActiveFilters = activeLane || activeInstitution || filterStatus || filterPriority || filterTag || searchQuery;
+  const hasActiveFilters = activeLane || filterStatus || filterPriority || filterTag || searchQuery;
 
   // ═══════════════════════════════════════
   //              RENDER
@@ -362,9 +346,9 @@ export default function App() {
           <SidebarItem
             icon={<LayoutDashboard className="w-4 h-4" />}
             label="总览"
-            active={activeView === 'overview' && !activeLane && !activeInstitution}
+            active={activeView === 'overview' && !activeLane}
             sidebarOpen={sidebarOpen}
-            onClick={() => { setActiveView('overview'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }}
+            onClick={() => { setActiveView('overview'); setActiveLane(null); setSelectedProjectId(null); }}
           />
           <SidebarItem
             icon={<FolderKanban className="w-4 h-4" />}
@@ -372,7 +356,7 @@ export default function App() {
             active={activeView === 'all_projects'}
             sidebarOpen={sidebarOpen}
             count={state.projects.length}
-            onClick={() => { setActiveView('all_projects'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }}
+            onClick={() => { setActiveView('all_projects'); setActiveLane(null); setSelectedProjectId(null); }}
           />
           <SidebarItem
             icon={<CheckSquare className="w-4 h-4" />}
@@ -380,7 +364,7 @@ export default function App() {
             active={activeView === 'all_tasks'}
             sidebarOpen={sidebarOpen}
             count={state.tasks.filter(t => t.status !== 'completed').length}
-            onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('all'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }}
+            onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('all'); setActiveLane(null); setSelectedProjectId(null); }}
           />
 
           <div className="pt-4 pb-2 px-2">
@@ -392,39 +376,12 @@ export default function App() {
               <SidebarItem
                 icon={<LaneIcon name={lane.icon} />}
                 label={lane.name}
-                active={activeLane === lane.id && !activeInstitution && activeView !== 'all_projects' && activeView !== 'all_tasks'}
+                active={activeLane === lane.id && activeView !== 'all_projects' && activeView !== 'all_tasks'}
                 sidebarOpen={sidebarOpen}
                 color={lane.color}
                 count={state.projects.filter(p => p.laneId === lane.id).length}
-                onClick={() => { setActiveView('overview'); setActiveLane(lane.id); setActiveInstitution(null); setSelectedProjectId(null); }}
+                onClick={() => { setActiveView('overview'); setActiveLane(lane.id); setSelectedProjectId(null); }}
               />
-              {/* Show institutions sub-menu for each lane */}
-              {sidebarOpen && activeLane === lane.id && (
-                <div className="ml-6 mt-1 space-y-0.5">
-                  {state.institutions
-                    .filter(inst => {
-                      // Show institutions that have projects in this lane
-                      return state.projects.some(p => p.laneId === lane.id && p.institutionId === inst.id);
-                    })
-                    .map(inst => (
-                    <button
-                      key={inst.id}
-                      onClick={() => { setActiveInstitution(inst.id); toggleInstitution(inst.id); }}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                        activeInstitution === inst.id
-                          ? 'bg-indigo-50 text-indigo-700 font-medium'
-                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                      }`}
-                    >
-                      <ChevronRight className={`w-3 h-3 transition-transform ${expandedInstitutions[inst.id] ? 'rotate-90' : ''}`} />
-                      <span>{inst.shortName}</span>
-                      <span className="ml-auto text-xs text-slate-400">
-                        {state.projects.filter(p => p.institutionId === inst.id).length}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
 
@@ -496,12 +453,7 @@ export default function App() {
                 </span>
               </>
             )}
-            {activeView === 'overview' && activeInstitution && getInstitution(activeInstitution) && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-                <span className="font-medium text-slate-700">{getInstitution(activeInstitution)!.name}</span>
-              </>
-            )}
+
           </div>
 
           {/* Search */}
@@ -612,7 +564,6 @@ export default function App() {
             const project = state.projects.find(p => p.id === selectedProjectId);
             if (!project) return null;
             const lane = getLane(project.laneId);
-            const institution = getInstitution(project.institutionId);
             const projectTags = project.tags.map(tid => getTag(tid)).filter(Boolean) as Tag[];
             const projectTasks = state.tasks.filter(t => t.projectId === project.id);
             const completedCount = projectTasks.filter(t => t.status === 'completed').length;
@@ -643,7 +594,6 @@ export default function App() {
                         <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
                         <div className="flex items-center gap-2 mt-1">
                           {lane && <span className="text-xs font-medium" style={{ color: lane.color }}>{lane.name}</span>}
-                          {institution && <span className="text-xs text-slate-400">· {institution.name}</span>}
                         </div>
                       </div>
                     </div>
@@ -890,7 +840,6 @@ export default function App() {
                           key={project.id}
                           project={project}
                           lane={lane}
-                          institution={getInstitution(project.institutionId)}
                           tags={project.tags.map(tid => getTag(tid)).filter(Boolean) as Tag[]}
                           taskCount={state.tasks.filter(t => t.projectId === project.id).length}
                           completedTaskCount={state.tasks.filter(t => t.projectId === project.id && t.status === 'completed').length}
@@ -1026,7 +975,7 @@ export default function App() {
           {/* ═══════════════════════════════════════════════════ */}
           {/*           VIEW: Overview / Lane view (default)      */}
           {/* ═══════════════════════════════════════════════════ */}
-          {activeView === 'overview' && !activeLane && !activeInstitution && (
+          {activeView === 'overview' && !activeLane && (
             <div className="p-6">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900">总览</h2>
@@ -1036,15 +985,15 @@ export default function App() {
               {/* Stat cards */}
               <div className="grid grid-cols-5 gap-4 mb-8">
                 <StatCard icon={<FolderKanban className="w-5 h-5" />} label="总项目数" value={stats.totalProjects} color="indigo"
-                  onClick={() => { setActiveView('all_projects'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }} />
+                  onClick={() => { setActiveView('all_projects'); setActiveLane(null); setSelectedProjectId(null); }} />
                 <StatCard icon={<CheckSquare className="w-5 h-5" />} label="总任务数" value={stats.totalTasks} color="blue"
-                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('all'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }} />
+                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('all'); setActiveLane(null); setSelectedProjectId(null); }} />
                 <StatCard icon={<Calendar className="w-5 h-5" />} label="本周待完成" value={stats.thisWeekTasks} color="emerald"
-                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('this_week'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }} />
+                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('this_week'); setActiveLane(null); setSelectedProjectId(null); }} />
                 <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="高优先级" value={stats.highPriorityTasks} color="amber"
-                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('high_priority'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }} />
+                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('high_priority'); setActiveLane(null); setSelectedProjectId(null); }} />
                 <StatCard icon={<Clock className="w-5 h-5" />} label="即将到期" value={stats.urgentTasks} color="red"
-                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('urgent'); setActiveLane(null); setActiveInstitution(null); setSelectedProjectId(null); }} />
+                  onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('urgent'); setActiveLane(null); setSelectedProjectId(null); }} />
               </div>
 
               {/* Lane cards */}
@@ -1056,7 +1005,7 @@ export default function App() {
                   return (
                     <button
                       key={lane.id}
-                      onClick={() => { setActiveView('overview'); setActiveLane(lane.id); setActiveInstitution(null); setSelectedProjectId(null); }}
+                      onClick={() => { setActiveView('overview'); setActiveLane(lane.id); setSelectedProjectId(null); }}
                       className="text-left p-5 bg-white rounded-2xl border border-slate-200 hover:shadow-lg hover:border-slate-300 transition-all group"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -1127,14 +1076,14 @@ export default function App() {
             </div>
           )}
 
-          {/* ── Lane/Institution view ── */}
-          {activeView === 'overview' && (activeLane || activeInstitution) && (
+          {/* ── Lane view ── */}
+          {activeView === 'overview' && activeLane && (
             <div className="p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">
-                    {activeInstitution && getInstitution(activeInstitution) ? getInstitution(activeInstitution)!.name : getLane(activeLane!)?.name}
+                    {getLane(activeLane!)?.name}
                   </h2>
                   <p className="text-sm text-slate-500 mt-1">
                     {filteredProjects.length} 个项目 · {filteredTasks.filter(t => t.status !== 'completed').length} 个进行中任务
@@ -1165,7 +1114,6 @@ export default function App() {
                         key={project.id}
                         project={project}
                         lane={getLane(project.laneId)}
-                        institution={getInstitution(project.institutionId)}
                         tags={project.tags.map(tid => getTag(tid)).filter(Boolean) as Tag[]}
                         taskCount={state.tasks.filter(t => t.projectId === project.id).length}
                         completedTaskCount={state.tasks.filter(t => t.projectId === project.id && t.status === 'completed').length}
@@ -1256,10 +1204,6 @@ export default function App() {
             ? (state.projects.find(p => p.id === detailItem.id) as Project)?.laneId
             : (state.tasks.find(t => t.id === detailItem.id) as Task)?.laneId
           )}
-          institution={detailItem.type === 'project'
-            ? getInstitution((state.projects.find(p => p.id === detailItem.id) as Project)?.institutionId)
-            : getInstitution((state.tasks.find(t => t.id === detailItem.id) as Task)?.institutionId)
-          }
           tags={detailItem.type === 'project'
             ? ((state.projects.find(p => p.id === detailItem.id) as Project)?.tags || []).map(tid => getTag(tid)).filter(Boolean) as Tag[]
             : ((state.tasks.find(t => t.id === detailItem.id) as Task)?.tags || []).map(tid => getTag(tid)).filter(Boolean) as Tag[]
@@ -1286,7 +1230,6 @@ export default function App() {
             : state.tasks.find(t => t.id === editingItem.id)!
           }
           lanes={state.lanes}
-          institutions={state.institutions}
           projects={state.projects}
           tags={state.tags}
           onClose={() => setEditingItem(null)}
@@ -1306,11 +1249,9 @@ export default function App() {
         <NewModal
           type={showNewModal}
           lanes={state.lanes}
-          institutions={state.institutions}
           projects={state.projects}
           tags={state.tags}
           defaultLaneId={activeLane || undefined}
-          defaultInstitutionId={activeInstitution || undefined}
           defaultProjectId={activeView === 'project_detail' ? selectedProjectId || undefined : undefined}
           onClose={() => setShowNewModal(null)}
           onAdd={(data) => {
@@ -1460,8 +1401,8 @@ function StatCard({ icon, label, value, color, onClick }: { icon: React.ReactNod
   );
 }
 
-function ProjectCard({ project, lane, institution, tags, taskCount, completedTaskCount, onClick, onEdit, onDelete }: {
-  project: Project; lane?: Lane; institution?: Institution; tags: Tag[];
+function ProjectCard({ project, lane, tags, taskCount, completedTaskCount, onClick, onEdit, onDelete }: {
+  project: Project; lane?: Lane; tags: Tag[];
   taskCount: number; completedTaskCount: number;
   onClick: () => void; onEdit: () => void; onDelete: () => void;
 }) {
@@ -1473,11 +1414,6 @@ function ProjectCard({ project, lane, institution, tags, taskCount, completedTas
           {lane && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: lane.color + '15', color: lane.color }}>
               {lane.name}
-            </span>
-          )}
-          {institution && (
-            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-              {institution.shortName}
             </span>
           )}
         </div>
@@ -1709,9 +1645,9 @@ function KanbanColumn({ status, tasks, onTaskClick, onStatusChange, getProject, 
   );
 }
 
-function DetailPanel({ type, item, lane, institution, tags, relatedTasks, project, onClose, onEdit }: {
+function DetailPanel({ type, item, lane, tags, relatedTasks, project, onClose, onEdit }: {
   type: 'project' | 'task'; item: Project | Task;
-  lane?: Lane; institution?: Institution; tags: Tag[];
+  lane?: Lane; tags: Tag[];
   relatedTasks?: Task[]; project?: Project;
   onClose: () => void; onEdit: () => void;
 }) {
@@ -1727,7 +1663,6 @@ function DetailPanel({ type, item, lane, institution, tags, relatedTasks, projec
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             {lane && <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ backgroundColor: lane.color + '15', color: lane.color }}>{lane.name}</span>}
-            {institution && <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">{institution.name}</span>}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
@@ -1863,9 +1798,9 @@ function DetailPanel({ type, item, lane, institution, tags, relatedTasks, projec
 }
 
 // ── Edit Modal ──
-function EditModal({ type, item, lanes, institutions, projects, tags, onClose, onSave, onDelete }: {
+function EditModal({ type, item, lanes, projects, tags, onClose, onSave, onDelete }: {
   type: 'project' | 'task'; item: Project | Task;
-  lanes: Lane[]; institutions: Institution[]; projects: Project[]; tags: Tag[];
+  lanes: Lane[]; projects: Project[]; tags: Tag[];
   onClose: () => void; onSave: (data: any) => void; onDelete: () => void;
 }) {
   const [form, setForm] = useState<any>({ ...item });
@@ -1891,19 +1826,9 @@ function EditModal({ type, item, lanes, institutions, projects, tags, onClose, o
           {/* Lane */}
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">主线</label>
-            <select value={form.laneId} onChange={e => { update('laneId', e.target.value); update('institutionId', ''); }}
+            <select value={form.laneId} onChange={e => update('laneId', e.target.value)}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
               {lanes.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-
-          {/* Institution */}
-          <div>
-            <label className="text-xs font-semibold text-slate-500 mb-1 block">院系</label>
-            <select value={form.institutionId || ''} onChange={e => update('institutionId', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-              <option value="">无</option>
-              {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
           </div>
 
@@ -2023,14 +1948,14 @@ function EditModal({ type, item, lanes, institutions, projects, tags, onClose, o
 }
 
 // ── New Item Modal ──
-function NewModal({ type, lanes, institutions, projects, tags, defaultLaneId, defaultInstitutionId, defaultProjectId, onClose, onAdd }: {
-  type: 'project' | 'task'; lanes: Lane[]; institutions: Institution[]; projects: Project[]; tags: Tag[];
-  defaultLaneId?: string; defaultInstitutionId?: string; defaultProjectId?: string;
+function NewModal({ type, lanes, projects, tags, defaultLaneId, defaultProjectId, onClose, onAdd }: {
+  type: 'project' | 'task'; lanes: Lane[]; projects: Project[]; tags: Tag[];
+  defaultLaneId?: string; defaultProjectId?: string;
   onClose: () => void; onAdd: (data: any) => void;
 }) {
   const empty = type === 'project'
-    ? { name: '', laneId: defaultLaneId || 'lane-research', institutionId: defaultInstitutionId || '', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', background: '', nextSteps: '', risks: '', progress: 0, tags: [] as string[] }
-    : { title: '', projectId: defaultProjectId || '', laneId: defaultLaneId || 'lane-research', institutionId: defaultInstitutionId || '', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', notes: '', tags: [] as string[] };
+    ? { name: '', laneId: defaultLaneId || 'lane-research', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', background: '', nextSteps: '', risks: '', progress: 0, tags: [] as string[] }
+    : { title: '', projectId: defaultProjectId || '', laneId: defaultLaneId || 'lane-research', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', notes: '', tags: [] as string[] };
 
   const [form, setForm] = useState(empty);
   const update = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }));
@@ -2050,22 +1975,12 @@ function NewModal({ type, lanes, institutions, projects, tags, defaultLaneId, de
               placeholder={type === 'project' ? '输入项目名称...' : '输入任务标题...'}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">主线</label>
-              <select value={form.laneId} onChange={e => { update('laneId', e.target.value); update('institutionId', ''); }}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-                {lanes.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">院系</label>
-              <select value={form.institutionId || ''} onChange={e => update('institutionId', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-                <option value="">无</option>
-                {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">主线</label>
+            <select value={form.laneId} onChange={e => update('laneId', e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              {lanes.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
           </div>
           {type === 'task' && (
             <div>
@@ -2148,7 +2063,6 @@ function NewModal({ type, lanes, institutions, projects, tags, defaultLaneId, de
             onAdd({
               ...form,
               deadline: form.deadline || undefined,
-              institutionId: form.institutionId || undefined,
               projectId: form.projectId || undefined,
             });
           }} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-xl transition-colors">

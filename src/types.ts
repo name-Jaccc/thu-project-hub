@@ -14,21 +14,12 @@ export interface Lane {
   icon: string;
   color: string;
   description: string;
-  institutions?: Institution[]; // Only for research lane
-}
-
-export interface Institution {
-  id: string;
-  name: string;
-  shortName: string;
-  description?: string;
 }
 
 export interface Project {
   id: string;
   name: string;
   laneId: string;
-  institutionId?: string;
   status: Status;
   priority: Priority;
   deadline?: string;
@@ -47,7 +38,6 @@ export interface Task {
   title: string;
   projectId: string;
   laneId: string;
-  institutionId?: string;
   status: Status;
   priority: Priority;
   deadline?: string;
@@ -60,7 +50,6 @@ export interface Task {
 
 export interface AppState {
   lanes: Lane[];
-  institutions: Institution[];
   projects: Project[];
   tasks: Task[];
   tags: Tag[];
