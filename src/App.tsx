@@ -3,7 +3,7 @@ import {
   Search, LayoutDashboard, FolderKanban, CheckSquare, Calendar,
   Plus, X, ChevronRight, Edit3, Trash2, Clock,
   AlertTriangle, Filter, ChevronLeft, ExternalLink,
-  GraduationCap, BookOpen, Users, MoreHorizontal, Menu,
+  GraduationCap, MoreHorizontal, Menu,
   ArrowUpRight, Inbox, List, Columns3,
   Save, RotateCcw, Cloud, CloudOff, Loader2, Settings,
 } from 'lucide-react';
@@ -40,8 +40,6 @@ function LaneIcon({ name, className }: { name: string; className?: string }) {
   const cls = className || 'w-4 h-4';
   switch (name) {
     case 'GraduationCap': return <GraduationCap className={cls} />;
-    case 'BookOpen': return <BookOpen className={cls} />;
-    case 'Users': return <Users className={cls} />;
     default: return <FolderKanban className={cls} />;
   }
 }
@@ -353,7 +351,7 @@ export default function App() {
       <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-white border-r border-slate-200 flex flex-col transition-all duration-200 flex-shrink-0`}>
         {/* Logo area */}
         <div className="h-14 flex items-center px-4 border-b border-slate-100">
-          {sidebarOpen && <h1 className="text-lg font-bold text-slate-900 tracking-tight">THU Project Hub</h1>}
+          {sidebarOpen && <h1 className="text-lg font-bold text-slate-900 tracking-tight">Shijie Project</h1>}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
             {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
