@@ -42,6 +42,7 @@ export interface Task {
   priority: Priority;
   deadline?: string;
   description: string;
+  currentProgress: string;
   notes: string;
   tags: string[];
   createdAt: string;

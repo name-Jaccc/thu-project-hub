@@ -1750,6 +1750,12 @@ function DetailPanel({ type, item, lane, tags, relatedTasks, project, onClose, o
           {/* Task-specific fields */}
           {!isProject && t && (
             <>
+              {t.currentProgress && (
+                <div className="mb-5">
+                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">当前进展</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{t.currentProgress}</p>
+                </div>
+              )}
               {t.notes && (
                 <div className="mb-5">
                   <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">备注</h3>
@@ -1903,11 +1909,19 @@ function EditModal({ type, item, lanes, projects, tags, onClose, onSave, onDelet
 
           {/* Task-specific */}
           {!isProject && (
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">备注</label>
-              <textarea value={form.notes} onChange={e => update('notes', e.target.value)} rows={2}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
-            </div>
+            <>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">当前进展</label>
+                <textarea value={form.currentProgress || ''} onChange={e => update('currentProgress', e.target.value)} rows={3}
+                  placeholder="记录当前的进展情况..."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">备注</label>
+                <textarea value={form.notes} onChange={e => update('notes', e.target.value)} rows={2}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+              </div>
+            </>
           )}
 
           {/* Tags */}
@@ -1955,7 +1969,7 @@ function NewModal({ type, lanes, projects, tags, defaultLaneId, defaultProjectId
 }) {
   const empty = type === 'project'
     ? { name: '', laneId: defaultLaneId || 'lane-research', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', background: '', nextSteps: '', risks: '', progress: 0, tags: [] as string[] }
-    : { title: '', projectId: defaultProjectId || '', laneId: defaultLaneId || 'lane-research', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', notes: '', tags: [] as string[] };
+    : { title: '', projectId: defaultProjectId || '', laneId: defaultLaneId || 'lane-research', status: 'not_started' as Status, priority: 'medium' as Priority, deadline: '', description: '', currentProgress: '', notes: '', tags: [] as string[] };
 
   const [form, setForm] = useState(empty);
   const update = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }));
@@ -2033,11 +2047,19 @@ function NewModal({ type, lanes, projects, tags, defaultLaneId, defaultProjectId
             </>
           )}
           {type === 'task' && (
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">备注</label>
-              <textarea value={form.notes} onChange={e => update('notes', e.target.value)} rows={2}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
-            </div>
+            <>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">当前进展</label>
+                <textarea value={form.currentProgress} onChange={e => update('currentProgress', e.target.value)} rows={3}
+                  placeholder="记录当前的进展情况..."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">备注</label>
+                <textarea value={form.notes} onChange={e => update('notes', e.target.value)} rows={2}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+              </div>
+            </>
           )}
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">标签</label>
