@@ -1510,16 +1510,23 @@ function TaskRow({ task, project, lane, tags, onClick, onStatusChange, onEdit, o
         </button>
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={onClick}>
-          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT_COLORS[task.priority]}`} />
-          <span className={`text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-            {task.title}
-          </span>
-          {tags.slice(0, 2).map(tag => (
-            <span key={tag.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: tag.color + '15', color: tag.color }}>
-              {tag.name}
+        <div className="cursor-pointer" onClick={onClick}>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT_COLORS[task.priority]}`} />
+            <span className={`text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+              {task.title}
             </span>
-          ))}
+            {tags.slice(0, 2).map(tag => (
+              <span key={tag.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: tag.color + '15', color: tag.color }}>
+                {tag.name}
+              </span>
+            ))}
+          </div>
+          {task.currentProgress && (
+            <p className="mt-0.5 ml-4 text-[11px] text-slate-400 line-clamp-1 leading-relaxed">
+              {task.currentProgress}
+            </p>
+          )}
         </div>
       </td>
       <td className="px-4 py-3">
