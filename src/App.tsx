@@ -6,12 +6,13 @@ import {
   GraduationCap, MoreHorizontal, Menu,
   ArrowUpRight, Inbox, List, Columns3,
   Save, RotateCcw, Cloud, CloudOff, Loader2, Settings,
+  BookOpen,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, isAfter, isBefore, addDays, parseISO } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import type {
-  AppState, Lane, Project, Task, Tag,
+  AppState, Lane, Project, Task, Tag, ProgressLog,
   Priority, Status, ViewMode,
 } from './types';
 import {
@@ -59,7 +60,7 @@ export default function App() {
 
   const [state, setState] = useState<AppState>(loadLocalState);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeView, setActiveView] = useState<'overview' | 'all_projects' | 'all_tasks' | 'project_detail'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'all_projects' | 'all_tasks' | 'progress_logs' | 'project_detail'>('overview');
   const [taskFilterMode, setTaskFilterMode] = useState<'all' | 'this_week' | 'high_priority' | 'urgent'>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeLane, setActiveLane] = useState<string | null>(null); // null = all
@@ -69,6 +70,7 @@ export default function App() {
   const [detailItem, setDetailItem] = useState<{ type: 'project' | 'task'; id: string } | null>(null);
   const [editingItem, setEditingItem] = useState<{ type: 'project' | 'task'; id: string } | null>(null);
   const [showNewModal, setShowNewModal] = useState<'project' | 'task' | null>(null);
+  const [showProgressLogModal, setShowProgressLogModal] = useState<{ editingId?: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filterTag, setFilterTag] = useState('');
@@ -267,6 +269,26 @@ export default function App() {
     updateTask(id, { status });
   }, [updateTask]);
 
+  const addProgressLog = useCallback((log: Omit<ProgressLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString().split('T')[0];
+    setState(prev => ({
+      ...prev,
+      progressLogs: [{ ...log, id: uuidv4(), createdAt: now, updatedAt: now }, ...prev.progressLogs],
+    }));
+  }, []);
+
+  const updateProgressLog = useCallback((id: string, updates: Partial<Omit<ProgressLog, 'id' | 'createdAt'>>) => {
+    const now = new Date().toISOString().split('T')[0];
+    setState(prev => ({
+      ...prev,
+      progressLogs: prev.progressLogs.map(l => l.id === id ? { ...l, ...updates, updatedAt: now } : l),
+    }));
+  }, []);
+
+  const deleteProgressLog = useCallback((id: string) => {
+    setState(prev => ({ ...prev, progressLogs: prev.progressLogs.filter(l => l.id !== id) }));
+  }, []);
+
   const resetData = useCallback(() => {
     const confirmed = window.confirm('确定要重置所有数据为初始状态吗？这将清除所有修改。');
     if (!confirmed) return;
@@ -300,6 +322,7 @@ export default function App() {
       tags: JSON.parse(JSON.stringify(initialData.tags)),
       projects: [],
       tasks: [],
+      progressLogs: [],
     };
     setState(emptyData);
     saveLocalState(emptyData);
@@ -374,6 +397,13 @@ export default function App() {
             count={state.tasks.filter(t => t.status !== 'completed').length}
             onClick={() => { setActiveView('all_tasks'); setTaskFilterMode('all'); setActiveLane(null); setSelectedProjectId(null); }}
           />
+          <SidebarItem
+            icon={<BookOpen className="w-4 h-4" />}
+            label="进展总结"
+            active={activeView === 'progress_logs'}
+            sidebarOpen={sidebarOpen}
+            onClick={() => { setActiveView('progress_logs'); setActiveLane(null); setSelectedProjectId(null); }}
+          />
 
           <div className="pt-4 pb-2 px-2">
             {sidebarOpen && <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">主线</span>}
@@ -442,6 +472,12 @@ export default function App() {
                 <span className="font-medium text-slate-700">
                   {taskFilterMode === 'this_week' ? '本周待完成' : taskFilterMode === 'high_priority' ? '高优先级' : taskFilterMode === 'urgent' ? '即将到期' : '全部任务'}
                 </span>
+              </>
+            )}
+            {activeView === 'progress_logs' && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                <span className="font-medium text-slate-700">进展总结</span>
               </>
             )}
             {activeView === 'project_detail' && selectedProjectId && (() => {
@@ -981,6 +1017,68 @@ export default function App() {
           )}
 
           {/* ═══════════════════════════════════════════════════ */}
+          {/*           VIEW: Progress Logs                       */}
+          {/* ═══════════════════════════════════════════════════ */}
+          {activeView === 'progress_logs' && (() => {
+            const sortedLogs = [...state.progressLogs].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+            return (
+              <div className="p-6 max-w-3xl mx-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">进展总结</h2>
+                    <p className="text-sm text-slate-500 mt-1">{state.progressLogs.length} 条记录</p>
+                  </div>
+                  <button onClick={() => setShowProgressLogModal({})} className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-800 transition-colors">
+                    <Plus className="w-4 h-4" /> 新建记录
+                  </button>
+                </div>
+
+                {sortedLogs.length === 0 ? (
+                  <div className="text-center py-16 text-slate-400">
+                    <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm mb-3">暂无进展记录</p>
+                    <button onClick={() => setShowProgressLogModal({})} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-xl transition-colors">
+                      <Plus className="w-4 h-4" /> 添加第一条记录
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sortedLogs.map(log => {
+                      const project = state.projects.find(p => p.id === log.projectId);
+                      const lane = project ? getLane(project.laneId) : null;
+                      return (
+                        <div key={log.id} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-sm transition-shadow">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              {lane && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: lane.color }} />}
+                              {project && <span className="text-sm font-medium text-slate-700">{project.name}</span>}
+                              <span className="text-xs text-slate-400">·</span>
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" /> {format(parseISO(log.date), 'yyyy年M月d日')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => setShowProgressLogModal({ editingId: log.id })}
+                                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => { if (window.confirm('确定删除这条进展记录？')) deleteProgressLog(log.id); }}
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{log.content}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ═══════════════════════════════════════════════════ */}
           {/*           VIEW: Overview / Lane view (default)      */}
           {/* ═══════════════════════════════════════════════════ */}
           {activeView === 'overview' && !activeLane && (
@@ -1252,6 +1350,23 @@ export default function App() {
         />
       )}
 
+      {/* ── Progress Log Modal ── */}
+      {showProgressLogModal && (
+        <ProgressLogModal
+          state={state}
+          editingId={showProgressLogModal.editingId}
+          onSave={(data) => {
+            if (showProgressLogModal.editingId) {
+              updateProgressLog(showProgressLogModal.editingId, data);
+            } else {
+              addProgressLog(data as Omit<ProgressLog, 'id' | 'createdAt' | 'updatedAt'>);
+            }
+            setShowProgressLogModal(null);
+          }}
+          onClose={() => setShowProgressLogModal(null)}
+        />
+      )}
+
       {/* ── New Item Modal ── */}
       {showNewModal && (
         <NewModal
@@ -1359,6 +1474,64 @@ export default function App() {
 // ═══════════════════════════════════════
 //           SUB-COMPONENTS
 // ═══════════════════════════════════════
+
+function ProgressLogModal({ state, editingId, onSave, onClose }: {
+  state: AppState;
+  editingId?: string;
+  onSave: (data: { projectId: string; date: string; content: string }) => void;
+  onClose: () => void;
+}) {
+  const existing = editingId ? state.progressLogs.find(l => l.id === editingId) : null;
+  const [projectId, setProjectId] = useState(existing?.projectId || state.projects[0]?.id || '');
+  const [date, setDate] = useState(existing?.date || new Date().toISOString().split('T')[0]);
+  const [content, setContent] = useState(existing?.content || '');
+
+  const handleSubmit = () => {
+    if (!content.trim()) return;
+    onSave({ projectId, date, content: content.trim() });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-semibold text-slate-900">{editingId ? '编辑进展记录' : '新建进展记录'}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">项目</label>
+            <select value={projectId} onChange={e => setProjectId(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              {state.projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">日期</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">进展内容</label>
+            <textarea value={content} onChange={e => setContent(e.target.value)} rows={6}
+              placeholder="记录本次的进展情况..."
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">取消</button>
+          <button onClick={handleSubmit} disabled={!content.trim()}
+            className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-40 transition-colors">
+            {editingId ? '保存修改' : '添加记录'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SidebarItem({ icon, label, active, sidebarOpen, color, count, onClick }: {
   icon: React.ReactNode; label: string; active?: boolean; sidebarOpen: boolean;

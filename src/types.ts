@@ -49,11 +49,21 @@ export interface Task {
   updatedAt: string;
 }
 
+export interface ProgressLog {
+  id: string;
+  projectId: string;
+  date: string; // YYYY-MM-DD
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   lanes: Lane[];
   projects: Project[];
   tasks: Task[];
   tags: Tag[];
+  progressLogs: ProgressLog[];
 }
 
 export const STATUS_LABELS: Record<Status, string> = {
