@@ -159,7 +159,7 @@ export default function App() {
           t.deadline && !isAfter(parseISO(t.deadline), addDays(today, 3)) && t.status !== 'completed'
         );
       default:
-        return state.tasks;
+        return sortTasksCompletedLast(state.tasks);
     }
   }, [state.tasks, taskFilterMode, today, endOfWeek]);
 
@@ -178,7 +178,7 @@ export default function App() {
   }, [state.projects, activeLane, filterStatus, filterPriority, filterTag, searchQuery]);
 
   const filteredTasks = useMemo(() => {
-    return state.tasks.filter(t => {
+    const result = state.tasks.filter(t => {
       if (activeLane && t.laneId !== activeLane) return false;
       if (filterStatus && t.status !== filterStatus) return false;
       if (filterPriority && t.priority !== filterPriority) return false;
@@ -189,6 +189,7 @@ export default function App() {
       }
       return true;
     });
+    return sortTasksCompletedLast(result);
   }, [state.tasks, activeLane, filterStatus, filterPriority, filterTag, searchQuery]);
 
   const kanbanGroups = useMemo(() => {
@@ -200,6 +201,13 @@ export default function App() {
   }, [filteredTasks]);
 
   // ── Helpers ──
+  const sortTasksCompletedLast = (tasks: Task[]) =>
+    [...tasks].sort((a, b) => {
+      const aD = a.status === 'completed' ? 1 : 0;
+      const bD = b.status === 'completed' ? 1 : 0;
+      return aD - bD;
+    });
+
   const getLane = (id: string) => state.lanes.find(l => l.id === id);
   const getTag = (id: string) => state.tags.find(t => t.id === id);
   const getProject = (id: string) => state.projects.find(p => p.id === id);
@@ -565,7 +573,7 @@ export default function App() {
             if (!project) return null;
             const lane = getLane(project.laneId);
             const projectTags = project.tags.map(tid => getTag(tid)).filter(Boolean) as Tag[];
-            const projectTasks = state.tasks.filter(t => t.projectId === project.id);
+            const projectTasks = sortTasksCompletedLast(state.tasks.filter(t => t.projectId === project.id));
             const completedCount = projectTasks.filter(t => t.status === 'completed').length;
             const inProgressCount = projectTasks.filter(t => t.status === 'in_progress').length;
             const blockedCount = projectTasks.filter(t => t.status === 'blocked').length;
