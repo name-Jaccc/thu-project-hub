@@ -25,11 +25,17 @@ import { isSupabaseConfigured, loadFromSupabase, saveToSupabase, testConnection 
 const STORAGE_KEY = 'project-dashboard-thu-data';
 
 function loadLocalState(): AppState {
+  const fallback = JSON.parse(JSON.stringify(initialData));
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // 确保新字段始终存在（兼容旧数据）
+      if (!parsed.progressLogs) parsed.progressLogs = [];
+      return parsed;
+    }
   } catch { /* ignore */ }
-  return JSON.parse(JSON.stringify(initialData));
+  return fallback;
 }
 
 function saveLocalState(state: AppState) {
@@ -100,6 +106,8 @@ export default function App() {
       }
       loadFromSupabase().then(cloudData => {
         if (cloudData) {
+          // 确保新字段始终存在（兼容旧数据）
+          if (!cloudData.progressLogs) cloudData.progressLogs = [];
           setState(cloudData);
           saveLocalState(cloudData); // Also cache locally
         }
