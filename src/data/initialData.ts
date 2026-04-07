@@ -309,6 +309,4 @@ export const initialData: AppState = {
       updatedAt: daysFromNow(-4),
     },
   ],
-
-  progressLogs: [],
 };
