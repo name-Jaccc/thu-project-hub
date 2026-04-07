@@ -146,6 +146,13 @@ export default function App() {
     return { totalProjects, totalTasks, thisWeekTasks, highPriorityTasks, urgentTasks };
   }, [state]);
 
+  const sortTasksCompletedLast = (tasks: Task[]) =>
+    [...tasks].sort((a, b) => {
+      const aD = a.status === 'completed' ? 1 : 0;
+      const bD = b.status === 'completed' ? 1 : 0;
+      return aD - bD;
+    });
+
   const preFilteredTasks = useMemo(() => {
     switch (taskFilterMode) {
       case 'this_week':
@@ -201,13 +208,6 @@ export default function App() {
   }, [filteredTasks]);
 
   // ── Helpers ──
-  const sortTasksCompletedLast = (tasks: Task[]) =>
-    [...tasks].sort((a, b) => {
-      const aD = a.status === 'completed' ? 1 : 0;
-      const bD = b.status === 'completed' ? 1 : 0;
-      return aD - bD;
-    });
-
   const getLane = (id: string) => state.lanes.find(l => l.id === id);
   const getTag = (id: string) => state.tags.find(t => t.id === id);
   const getProject = (id: string) => state.projects.find(p => p.id === id);
